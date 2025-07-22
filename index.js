@@ -1,15 +1,12 @@
-// .envファイル読み込み（Railwayでも必要）
-require('dotenv').config();
+// index.js
+require('dotenv').config(); // これ1つでOK！重複禁止
 
-// 必要なモジュール
 const express = require('express');
 const line = require('@line/bot-sdk');
 
-// Expressアプリ初期化
 const app = express();
 const port = process.env.PORT || 8080;
 
-// LINE設定
 const config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET
@@ -17,4 +14,26 @@ const config = {
 
 const client = new line.Client(config);
 
-// 以下、ルーティングやhandler追加していく...
+app.post('/webhook', line.middleware(config), (req, res) => {
+  Promise.all(req.body.events.map(handleEvent))
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error('エラー発生:', err);
+      res.status(500).end();
+    });
+});
+
+function handleEvent(event) {
+  if (event.type !== 'message' || event.message.type !== 'text') {
+    return Promise.resolve(null);
+  }
+
+  return client.replyMessage(event.replyToken, {
+    type: 'text',
+    text: `くまお先生からの返信：${event.message.text}`
+  });
+}
+
+app.listen(port, () => {
+  console.log(`サーバー起動中✨ ポート: ${port}`);
+});
