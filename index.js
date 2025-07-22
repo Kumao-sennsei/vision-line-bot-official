@@ -1,51 +1,51 @@
-// ===== 必要モジュール読み込み =====
-const express = require('express');
-const line = require('@line/bot-sdk');
-const dotenv = require('dotenv');
-dotenv.config();
+// ✅ vision-line-bot-official 用：完全Webhook対応 index.js（成功確定版）
 
-// ===== LINE Bot設定 =====
+require('dotenv').config();
+const express = require('express');
+const { middleware, Client } = require('@line/bot-sdk');
+const rawBodySaver = require('raw-body');
+const app = express();
+
+// ✅ 環境変数からLINE構成読み込み
 const config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.CHANNEL_SECRET,
+  channelSecret: process.env.CHANNEL_SECRET
 };
 
-const client = new line.Client(config);
+const client = new Client(config);
 
-// ===== Expressサーバー起動準備 =====
-const app = express();
-const port = process.env.PORT || 8080;
+// ✅ LINEからのリクエスト検証用：body-parser + raw-body
+app.use('/webhook', express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
-// ✅ ここが重要（JSON解析ミドルウェア）
-app.use(express.json());
-
-// ===== Webhookエンドポイント設定 =====
-app.post('/webhook', line.middleware(config), async (req, res) => {
+// ✅ Webhookエンドポイント：POSTでLINEと連携
+app.post('/webhook', middleware(config), async (req, res) => {
   try {
-    const results = await Promise.all(req.body.events.map(handleEvent));
-    res.json(results);
-  } catch (error) {
-    console.error('イベント処理エラー:', error);
-    res.status(500).end();
+    const events = req.body.events;
+    if (events.length === 0) return res.status(200).end();
+
+    // ✅ メッセージイベントにだけ反応
+    const results = await Promise.all(events.map(async (event) => {
+      if (event.type === 'message' && event.message.type === 'text') {
+        return client.replyMessage(event.replyToken, {
+          type: 'text',
+          text: `くまお先生だよ～🐻：${event.message.text}`
+        });
+      }
+    }));
+
+    return res.status(200).json(results);
+  } catch (err) {
+    console.error('エラー発生:', err);
+    return res.status(500).end();
   }
 });
 
-// ===== イベント処理関数 =====
-async function handleEvent(event) {
-  if (event.type !== 'message' || event.message.type !== 'text') {
-    return Promise.resolve(null);
-  }
-
-  const userMessage = event.message.text;
-  const replyText = `くまお先生だよ🐻：『${userMessage}』って言ったね！えらいぞ〜✨`;
-
-  return client.replyMessage(event.replyToken, {
-    type: 'text',
-    text: replyText,
-  });
-}
-
-// ===== サーバー起動 =====
-app.listen(port, () => {
-  console.log(`✨ サーバー起動成功！ポート番号: ${port}`);
+// ✅ ポート8080でリスン（Railway用）
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`✨ サーバー起動成功！ポート番号: ${PORT}`);
 });
