@@ -1,3 +1,4 @@
+require('dotenv').config(); 
 // 必要なモジュール
 const express = require('express');
 const line = require('@line/bot-sdk');
