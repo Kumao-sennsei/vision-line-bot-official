@@ -1,60 +1,54 @@
+// ===== 必要モジュール読み込み =====
 const express = require('express');
 const line = require('@line/bot-sdk');
 const dotenv = require('dotenv');
-const { OpenAI } = require('openai');
 
+// ===== 環境変数読み込み =====
 dotenv.config();
 
-// 正しい変数名を使う！
+// ===== LINE Bot設定 =====
 const config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET,
 };
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const client = new line.Client(config);
 
+// ===== Expressサーバー起動準備 =====
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Webhookルート設定
+// ===== Webhookエンドポイント設定 =====
 app.post('/webhook', line.middleware(config), async (req, res) => {
-  Promise.all(req.body.events.map(handleEvent)).then((result) => res.json(result));
+  try {
+    const results = await Promise.all(req.body.events.map(handleEvent));
+    res.json(results);
+  } catch (error) {
+    console.error('イベント処理エラー:', error);
+    res.status(500).end();
+  }
 });
 
-// イベント処理
+// ===== イベント処理関数 =====
 async function handleEvent(event) {
+  // テキストメッセージ以外は無視
   if (event.type !== 'message' || event.message.type !== 'text') {
-    return null;
+    return Promise.resolve(null);
   }
 
   const userMessage = event.message.text;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4',
-    messages: [
-      {
-        role: 'system',
-        content: 'あなたは優しくて親切なくまお先生です。生徒の質問に、会話形式で楽しく丁寧に答えてください。',
-      },
-      {
-        role: 'user',
-        content: userMessage,
-      },
-    ],
-  });
+  // 応答メッセージ（ここはくまお先生風に固定返答）
+  const replyText = `くまお先生だよ🐻：『${userMessage}』って言ったね！えらいぞ～✨`;
 
-  const replyMessage = response.choices[0].message.content;
-
-  const client = new line.Client(config);
+  // LINEへ返信
   return client.replyMessage(event.replyToken, {
     type: 'text',
-    text: replyMessage,
+    text: replyText,
   });
 }
 
-// 起動ログ
+// ===== サーバー起動 =====
 app.listen(port, () => {
-  console.log(`🐻 くまお先生が起動しました！ポート: ${port}`);
+  console.log(`✨ サーバー起動成功！ポート番号: ${port}`);
 });
