@@ -2,7 +2,6 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 const dotenv = require('dotenv');
-const getRawBody = require('raw-body');
 dotenv.config();
 
 // ===== LINE Bot設定 =====
@@ -16,6 +15,9 @@ const client = new line.Client(config);
 // ===== Expressサーバー起動準備 =====
 const app = express();
 const port = process.env.PORT || 8080;
+
+// ✅ ここが重要（JSON解析ミドルウェア）
+app.use(express.json());
 
 // ===== Webhookエンドポイント設定 =====
 app.post('/webhook', line.middleware(config), async (req, res) => {
@@ -35,8 +37,7 @@ async function handleEvent(event) {
   }
 
   const userMessage = event.message.text;
-
-  const replyText = `くまお先生だよ🧸：『${userMessage}』って言ったね！えらいぞ〜✨`;
+  const replyText = `くまお先生だよ🐻：『${userMessage}』って言ったね！えらいぞ〜✨`;
 
   return client.replyMessage(event.replyToken, {
     type: 'text',
