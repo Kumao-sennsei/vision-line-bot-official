@@ -2,8 +2,7 @@
 const express = require('express');
 const line = require('@line/bot-sdk');
 const dotenv = require('dotenv');
-
-// ===== 環境変数読み込み =====
+const getRawBody = require('raw-body');
 dotenv.config();
 
 // ===== LINE Bot設定 =====
@@ -31,17 +30,14 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
 
 // ===== イベント処理関数 =====
 async function handleEvent(event) {
-  // テキストメッセージ以外は無視
   if (event.type !== 'message' || event.message.type !== 'text') {
     return Promise.resolve(null);
   }
 
   const userMessage = event.message.text;
 
-  // 応答メッセージ（ここはくまお先生風に固定返答）
-  const replyText = `くまお先生だよ🐻：『${userMessage}』って言ったね！えらいぞ～✨`;
+  const replyText = `くまお先生だよ🧸：『${userMessage}』って言ったね！えらいぞ〜✨`;
 
-  // LINEへ返信
   return client.replyMessage(event.replyToken, {
     type: 'text',
     text: replyText,
